@@ -88,10 +88,6 @@ function metalFrame(envMap, brushed) {
   const backing = new T.MeshStandardMaterial({
     color: '#292e34', metalness: .92, roughness: .3, envMap, envMapIntensity: 1.7,
   })
-  const glass = new T.MeshPhysicalMaterial({
-    color: '#ffffff', metalness: 0, roughness: .045, envMap, envMapIntensity: 2.2,
-    transparent: true, opacity: .085, depthWrite: false, clearcoat: 1, clearcoatRoughness: .02,
-  })
   const sealPoints = []
   for(let arm = 0; arm < 6; arm++) {
     const angle = arm * turn / 6 + Math.PI / 2
@@ -108,16 +104,13 @@ function metalFrame(envMap, brushed) {
     make() {
       const pivot = new T.Group()
       const box = new T.Mesh(plate, backing)
-      const art = new T.Mesh(artPlane, new T.MeshBasicMaterial({ color: '#b5ac95', toneMapped: false }))
+      const art = new T.Mesh(artPlane, new T.MeshBasicMaterial({ color: '#b5ac95', toneMapped: false, fog: false }))
       art.position.z = .053
-      const glassMesh = new T.Mesh(artPlane, glass)
-      glassMesh.position.z = .061
-      glassMesh.renderOrder = 2
-      pivot.add(new T.Mesh(rail, gold), new T.Mesh(lip, polished), box, new T.LineSegments(seal, engraving), art, glassMesh)
+      pivot.add(new T.Mesh(rail, gold), new T.Mesh(lip, polished), box, new T.LineSegments(seal, engraving), art)
       return { pivot, box, art }
     },
     dispose() {
-      for (const resource of [rail, lip, plate, artPlane, seal, gold, polished, backing, glass, engraving, brushed, envMap])resource.dispose()
+      for (const resource of [rail, lip, plate, artPlane, seal, gold, polished, backing, engraving, brushed, envMap])resource.dispose()
     },
   }
 }
@@ -132,6 +125,7 @@ export function makeGallery(reduce, renderer) {
   const facing = new T.Quaternion(), desiredRotation = new T.Quaternion(), pitch = new T.Quaternion()
   const up = new T.Vector3(0, 1, 0)
   const envMap = frameEnvironment(renderer)
+  const maxAnisotropy = renderer.capabilities.getMaxAnisotropy()
   const frameModel = metalFrame(envMap, brushedMetal())
   const loader = new T.TextureLoader()
   const results = []
@@ -171,6 +165,7 @@ export function makeGallery(reduce, renderer) {
           return
         }
         texture.colorSpace = T.SRGBColorSpace
+        texture.anisotropy = maxAnisotropy
         const ratio = texture.image.width / texture.image.height
         if (ratio > 1) {
           texture.repeat.x = 1 / ratio
@@ -258,7 +253,7 @@ export function makeGallery(reduce, renderer) {
 
     root.getWorldQuaternion(facing).invert().multiply(camera.quaternion)
     if (selected) {
-      preview.set(.10, -.14, -6.6).applyQuaternion(camera.quaternion).add(camera.position)
+      preview.set(.10, -.14, -5.4).applyQuaternion(camera.quaternion).add(camera.position)
       root.worldToLocal(preview)
     }
 
@@ -273,7 +268,7 @@ export function makeGallery(reduce, renderer) {
       desiredRotation.copy(facing).multiply(pitch.setFromAxisAngle(up, tilt))
       card.group.position.lerp(desired, movement)
       card.group.quaternion.slerp(desiredRotation, alignment)
-      card.group.scale.setScalar(T.MathUtils.damp(card.group.scale.x, active ? 1.23 : .87, 5.6, dt))
+      card.group.scale.setScalar(T.MathUtils.damp(card.group.scale.x, active ? 1.3 : .87, 5.6, dt))
 
       if (card.flipTime < 1) {
         card.flipTime = Math.min(1, card.flipTime + dt / .76)
