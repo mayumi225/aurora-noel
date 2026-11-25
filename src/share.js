@@ -1,5 +1,6 @@
 const endpoint = '/api/gift'
 const MAX_PHOTO_CHARS = 900 * 1024
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024
 
 async function loadBitmap(file) {
   if (typeof createImageBitmap === 'function') {
@@ -31,8 +32,9 @@ export async function compressPhoto(file, max = 1440, quality = .82) {
   return data
 }
 
-export async function createShareLink({ name, message, removed, photos, onProgress }) {
+export async function createShareLink({ name, message, removed, photos, audioFile, onProgress, onAudioProgress }) {
   if (location.protocol === 'file:') throw new Error('unavailable')
+  if (audioFile && audioFile.size > MAX_AUDIO_BYTES) throw new Error('audio-too-large')
   const payloadPhotos = []
   for (let index = 0; index < photos.length; index++) {
     const item = photos[index]
@@ -43,7 +45,7 @@ export async function createShareLink({ name, message, removed, photos, onProgre
     onProgress?.(index + 1, photos.length)
   }
 
-  const body = JSON.stringify({ name, message, removed, photos: payloadPhotos })
+  const body = JSON.stringify({ name, message, removed, photos: payloadPhotos, audioName: audioFile?.name || '' })
   if (body.length > 5 * 1024 * 1024) throw new Error('too-large')
 
   let response
@@ -60,7 +62,30 @@ export async function createShareLink({ name, message, removed, photos, onProgre
   if (!type.includes('application/json')) throw new Error('unavailable')
   const result = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(result.error || 'failed')
-  return { id: result.id, url: `${location.origin}${location.pathname}?gift=${result.id}` }
+
+  let hasAudio = false
+  if (audioFile) {
+    onAudioProgress?.('正在上传音乐…')
+    let audioResponse
+    try {
+      audioResponse = await fetch(`${endpoint}?id=${encodeURIComponent(result.id)}`, {
+        method: 'PUT',
+        headers: { 'content-type': audioFile.type || 'audio/mpeg' },
+        body: audioFile,
+      })
+    } catch {
+      await fetch(`${endpoint}?id=${encodeURIComponent(result.id)}`, { method: 'DELETE' }).catch(() => {})
+      throw new Error('network')
+    }
+    if (!audioResponse.ok) {
+      await fetch(`${endpoint}?id=${encodeURIComponent(result.id)}`, { method: 'DELETE' }).catch(() => {})
+      throw new Error(audioResponse.status === 413 ? 'audio-too-large' : 'audio-failed')
+    }
+    hasAudio = true
+    onAudioProgress?.('')
+  }
+
+  return { id: result.id, hasAudio, url: `${location.origin}${location.pathname}?gift=${result.id}` }
 }
 
 export async function loadGift(id) {
@@ -78,4 +103,11 @@ export async function loadGift(id) {
   if (response.status === 410) throw new Error('expired')
   if (!response.ok) throw new Error(result.error || 'failed')
   return result
+}
+
+export async function loadGiftAudio(id) {
+  if (location.protocol === 'file:') throw new Error('unavailable')
+  const response = await fetch(`${endpoint}?id=${encodeURIComponent(id)}&audio=1`)
+  if (!response.ok) throw new Error('audio-failed')
+  return response.blob()
 }

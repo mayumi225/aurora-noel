@@ -9,7 +9,7 @@ import { dateCountdown, defaultPhotos, localRead, localWrite, photoStorage } fro
 import { defaultTrack, useSound } from './sound'
 import { HandController } from './hand'
 import { Intro } from './intro'
-import { createShareLink, loadGift } from './share'
+import { createShareLink, loadGift, loadGiftAudio } from './share'
 import './styles.css'
 
 const lite=new URLSearchParams(location.search).has('lite')
@@ -127,10 +127,11 @@ function Panel({kind,close,children}) {
   </dialog>
 }
 
-function BlessingForm({name,message,photos,removed,onSave,onClose}) {
+function BlessingForm({name,message,photos,removed,audioFile,audioTitle,onSave,onClose}) {
   const [draftName,setDraftName]=useState(name)
   const [draftMessage,setDraftMessage]=useState(message)
   const [link,setLink]=useState('')
+  const [sharedAudio,setSharedAudio]=useState(false)
   const [busy,setBusy]=useState(false)
   const [progress,setProgress]=useState('')
   const [notice,setNotice]=useState('')
@@ -141,15 +142,17 @@ function BlessingForm({name,message,photos,removed,onSave,onClose}) {
   const nextMessage=()=>draftMessage.trim().replace(/\s+/g,' ')||'愿今夜的星光，落在你身旁。'
   const preview=(nextName()?nextName()+'，':'')+nextMessage()
   async function generate() {
-    setBusy(true); setNotice(''); setLink(''); setCopied(false)
+    setBusy(true); setNotice(''); setLink(''); setCopied(false); setSharedAudio(false)
     const payload={name:nextName(),message:nextMessage()}
     onSave(payload)
     try {
       const result=await createShareLink({
-        ...payload,removed,photos,
+        ...payload,removed,photos,audioFile,
         onProgress:(index,total)=>setProgress(`正在压缩照片 ${index}/${total}`),
+        onAudioProgress:message=>setProgress(message),
       })
       setLink(result.url)
+      setSharedAudio(result.hasAudio)
       setProgress('')
     } catch(error) {
       const messages={
@@ -157,6 +160,8 @@ function BlessingForm({name,message,photos,removed,onSave,onClose}) {
         network:'网络连接失败，请稍后重试。',
         'photo-too-large':'有照片体积过大，请换一张再试。',
         'too-large':'照片总大小超出限制，请减少照片数量。',
+        'audio-too-large':'音乐文件超过 5MB，无法同步。请换一首更小的文件。',
+        'audio-failed':'音乐上传失败，链接未生成，请重试。',
         failed:'生成失败，请稍后重试。',
       }
       setNotice(messages[error.message]||'生成失败，请稍后重试。')
@@ -191,6 +196,7 @@ function BlessingForm({name,message,photos,removed,onSave,onClose}) {
     <section className="panel-section">
       <h3>分享给朋友</h3>
       <p className="share-hint">把祝福语和相册里的 {photos.length} 张照片打包成一个链接，朋友点开就能看到你的圣诞树。链接 90 天内有效。</p>
+      <p className="share-hint">{audioFile?`会同步当前音乐：${audioTitle}${audioFile.size>5*1024*1024?'（超过 5MB，无法同步）':''}`:'没有上传自定义音乐，朋友会听到默认曲目。'}</p>
       <button type="button" className="primary share-generate" onClick={generate} disabled={busy}>
         {busy?<Loader2 className="share-spin" size={16}/>:<Share2 size={16}/>}{busy?'正在生成…':'生成分享链接'}
       </button>
@@ -202,6 +208,7 @@ function BlessingForm({name,message,photos,removed,onSave,onClose}) {
         </button>
         {navigator.share&&<button type="button" className="secondary" onClick={shareLink}><Share2 size={15}/>分享</button>}
       </div>}
+      {link&&<p className="notice">已包含 {photos.length} 张照片{sharedAudio?'和 1 首音乐':''}。</p>}
       {notice&&<p className="notice">{notice}</p>}
       {!photos.length&&<p className="notice">相册里还没有照片，链接只会带上祝福语。</p>}
     </section>
@@ -311,6 +318,13 @@ function App() {
         })),
       })
       setGiftState('ready')
+      if(data.hasAudio) {
+        loadGiftAudio(id).then(blob=>{
+          if(cancelled)return
+          const url=URL.createObjectURL(blob)
+          sound.setSource(url,data.audioName||'好友分享的音乐')
+        }).catch(()=>{})
+      }
     }).catch(error=>{
       if(cancelled)return
       setGiftState(error.message==='expired'?'expired':'error')
@@ -436,7 +450,7 @@ function App() {
       {panel&&<Panel key={panel} kind={panel} close={()=>setPanel(null)}>
         {panel==='settings'&&<Settings settings={settings} setSettings={setSettings} mode={mode} setMode={setMode} sound={sound}/>}
         {panel==='gallery'&&<Gallery items={photos} upload={uploadPhotos} remove={deletePhoto} notice={notice} readOnly={giftActive}/>}
-        {panel==='name'&&<BlessingForm name={name} message={message} photos={uploads} removed={removed} onSave={saveBlessing} onClose={()=>setPanel(null)}/>}
+        {panel==='name'&&<BlessingForm name={name} message={message} photos={uploads} removed={removed} audioFile={sound.file} audioTitle={sound.title} onSave={saveBlessing} onClose={()=>setPanel(null)}/>}
         {panel==='help'&&<Help/>}
       </Panel>}
     </>}

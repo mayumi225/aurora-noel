@@ -9,6 +9,7 @@ export function useSound(level) {
   const [blocked,setBlocked]=useState(false)
   const [title,setTitle]=useState('Christmas by Ikson')
   const [failed,setFailed]=useState(false)
+  const [file,setFile]=useState(null)
 
   function connect() {
     const AudioContext=window.AudioContext||window.webkitAudioContext
@@ -60,6 +61,15 @@ export function useSound(level) {
     localUrl.current=URL.createObjectURL(file)
     element.current.src=localUrl.current
     setTitle(file.name)
+    setFile(file)
+    setFailed(false)
+    play(true)
+  }
+  function setSource(url,name='好友分享的音乐') {
+    if(localUrl.current)URL.revokeObjectURL(localUrl.current)
+    localUrl.current=url
+    if(element.current)element.current.src=url
+    setTitle(name)
     setFailed(false)
     play(true)
   }
@@ -105,5 +115,5 @@ export function useSound(level) {
     }
   },[level])
 
-  return {element,playing,blocked,title,failed,upload,unlock,toggle:()=>playing?pause():play(true)}
+  return {element,playing,blocked,title,failed,file,upload,unlock,setSource,toggle:()=>playing?pause():play(true)}
 }
