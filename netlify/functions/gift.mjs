@@ -4,7 +4,7 @@ const MAX_PHOTOS = 8
 const MAX_PHOTO_CHARS = 900 * 1024
 const MAX_BODY_CHARS = 5 * 1024 * 1024
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024
-const TTL = 90 * 24 * 60 * 60 * 1000
+const TTL = 30 * 24 * 60 * 60 * 1000
 
 const json = (status, body) => new Response(JSON.stringify(body), {
   status,

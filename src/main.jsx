@@ -195,7 +195,7 @@ function BlessingForm({name,message,photos,removed,audioFile,audioTitle,onSave,o
     </section>
     <section className="panel-section">
       <h3>分享给朋友</h3>
-      <p className="share-hint">把祝福语和相册里的 {photos.length} 张照片打包成一个链接，朋友点开就能看到你的圣诞树。链接 90 天内有效。</p>
+      <p className="share-hint">把祝福语和相册里的 {photos.length} 张照片打包成一个链接，朋友点开就能看到你的圣诞树。链接 30 天内有效。</p>
       <p className="share-hint">{audioFile?`会同步当前音乐：${audioTitle}${audioFile.size>5*1024*1024?'（超过 5MB，无法同步）':''}`:'没有上传自定义音乐，朋友会听到默认曲目。'}</p>
       <button type="button" className="primary share-generate" onClick={generate} disabled={busy}>
         {busy?<Loader2 className="share-spin" size={16}/>:<Share2 size={16}/>}{busy?'正在生成…':'生成分享链接'}

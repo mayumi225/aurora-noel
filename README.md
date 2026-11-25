@@ -44,14 +44,18 @@ pnpm preview
 ### Cloudflare Pages（当前线上）
 
 - 线上地址：https://aurora-noel.pages.dev
-- 分享存储：Cloudflare KV（绑定名 `GIFTS_KV`），免费额度 1GB，约 140–160 份分享
+- 分享存储：Cloudflare KV（绑定名 `GIFTS_KV`），免费额度 1GB，链接保留 30 天
+- 自动清理：`cleanup/` 下的 Cron Worker 每天检查并删除超过 30 天的分享
 - 后端：`functions/api/gift.js`
 - 配置：`wrangler.toml`
 
 ```sh
 npm run build
 npx wrangler pages deploy dist --project-name aurora-noel --branch main
+npx wrangler deploy --config cleanup/wrangler.toml
 ```
+
+最后一条是部署 30 天定时清理 Worker（每天 03:00 UTC 运行），不需要每次改网站都执行。
 
 KV 是最终一致的，新生成的分享链接可能需要最多约 60 秒才能在全球生效；前端已内置重试。
 
@@ -70,7 +74,7 @@ KV 是最终一致的，新生成的分享链接可能需要最多约 60 秒才�
 - 「回忆相册」支持 JPG / PNG / WEBP，照片保存在当前浏览器，不会上传。
 - 「手势控制」需要摄像头权限；视频帧只在浏览器本地处理。
 - 「定制祝福」可修改名字与祝福语，并在当前浏览器记住。
-- 「生成分享链接」会把祝福和相册照片压缩为 WebP 上传到分享存储（Cloudflare KV 或 Netlify Blobs），返回形如 `?gift=xxxxxxxx` 的链接；链接 90 天内有效，朋友打开后看到的是你的树、相册和祝福，不会写入对方浏览器。
+- 「生成分享链接」会把祝福和相册照片压缩为 WebP 上传到分享存储（Cloudflare KV 或 Netlify Blobs），返回形如 `?gift=xxxxxxxx` 的链接；链接 30 天内有效，朋友打开后看到的是你的树、相册和祝福，不会写入对方浏览器。
 - 如果在「圣诞布置」里上传过本地音乐，分享时会一并同步（文件需小于 5MB）；没有自定义音乐时，朋友会听到默认曲目。
 
 ## 素材与许可

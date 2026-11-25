@@ -1,0 +1,10 @@
+name = "aurora-noel-cleanup"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[triggers]
+crons = ["0 3 * * *"]
+
+[[kv_namespaces]]
+binding = "GIFTS_KV"
+id = "e389a00e72454b1f9d40ae48b9769e32"
