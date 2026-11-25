@@ -45,7 +45,14 @@ export async function createShareLink({ name, message, removed, photos, audioFil
     onProgress?.(index + 1, photos.length)
   }
 
-  const body = JSON.stringify({ name, message, removed, photos: payloadPhotos, audioName: audioFile?.name || '' })
+  const body = JSON.stringify({
+    name,
+    message,
+    removed,
+    photos: payloadPhotos,
+    audioName: audioFile?.name || '',
+    hasAudio: Boolean(audioFile),
+  })
   if (body.length > 5 * 1024 * 1024) throw new Error('too-large')
 
   let response
@@ -88,11 +95,21 @@ export async function createShareLink({ name, message, removed, photos, audioFil
   return { id: result.id, hasAudio, url: `${location.origin}${location.pathname}?gift=${result.id}` }
 }
 
+async function fetchWithRetry(url, attempts = 3) {
+  let response
+  for (let index = 0; index < attempts; index++) {
+    response = await fetch(url)
+    if (response.status !== 404 || index === attempts - 1) return response
+    await new Promise(resolve => setTimeout(resolve, 1500))
+  }
+  return response
+}
+
 export async function loadGift(id) {
   if (location.protocol === 'file:') throw new Error('unavailable')
   let response
   try {
-    response = await fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
+    response = await fetchWithRetry(`${endpoint}?id=${encodeURIComponent(id)}`)
   } catch {
     throw new Error('network')
   }
@@ -107,7 +124,7 @@ export async function loadGift(id) {
 
 export async function loadGiftAudio(id) {
   if (location.protocol === 'file:') throw new Error('unavailable')
-  const response = await fetch(`${endpoint}?id=${encodeURIComponent(id)}&audio=1`)
+  const response = await fetchWithRetry(`${endpoint}?id=${encodeURIComponent(id)}&audio=1`)
   if (!response.ok) throw new Error('audio-failed')
   return response.blob()
 }

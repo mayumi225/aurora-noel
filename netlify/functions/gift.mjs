@@ -88,7 +88,7 @@ export default async (request) => {
     name,
     message,
     audioName,
-    hasAudio: false,
+    hasAudio: Boolean(data?.hasAudio),
     removed,
     photos: photos.map(photo => ({
       name: String(photo.name || 'photo').slice(0, 60),

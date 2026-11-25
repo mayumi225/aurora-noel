@@ -37,16 +37,31 @@ pnpm build
 pnpm preview
 ```
 
-分享链接依赖 Netlify Functions，`pnpm dev` / 静态预览中点击「生成分享链接」会提示服务未启用，这是正常现象。
+分享链接依赖 Serverless 存储（Cloudflare KV 或 Netlify Blobs），`pnpm dev` / 静态预览中点击「生成分享链接」会提示服务未启用，这是正常现象。
 
-## 部署到 Netlify
+## 部署
 
-分享功能需要 Netlify Functions + Netlify Blobs，**必须通过 Git 集成或 Netlify CLI 构建部署**；直接拖拽纯静态压缩包不会启用 Function。
+### Cloudflare Pages（当前线上）
+
+- 线上地址：https://aurora-noel.pages.dev
+- 分享存储：Cloudflare KV（绑定名 `GIFTS_KV`），免费额度 1GB，约 140–160 份分享
+- 后端：`functions/api/gift.js`
+- 配置：`wrangler.toml`
+
+```sh
+npm run build
+npx wrangler pages deploy dist --project-name aurora-noel --branch main
+```
+
+KV 是最终一致的，新生成的分享链接可能需要最多约 60 秒才能在全球生效；前端已内置重试。
+
+### Netlify
+
+分享功能需要 Netlify Functions + Netlify Blobs，必须通过 Git 集成或 Netlify CLI 构建部署；直接拖拽纯静态压缩包不会启用 Function。
 
 1. Netlify → Add new site → Import an existing project，选择本仓库
 2. Build command 填 `npm run build`，Publish directory 填 `dist`
 3. 仓库内的 `netlify.toml` 已配置 Functions 目录与 Node 22
-4. 部署完成后打开站点 →「定制祝福」→「生成分享链接」
 
 ## 使用说明
 
@@ -55,7 +70,7 @@ pnpm preview
 - 「回忆相册」支持 JPG / PNG / WEBP，照片保存在当前浏览器，不会上传。
 - 「手势控制」需要摄像头权限；视频帧只在浏览器本地处理。
 - 「定制祝福」可修改名字与祝福语，并在当前浏览器记住。
-- 「生成分享链接」会把祝福和相册照片压缩为 WebP 上传到 Netlify Blobs，返回形如 `?gift=xxxxxxxx` 的链接；链接 90 天内有效，朋友打开后看到的是你的树、相册和祝福，不会写入对方浏览器。
+- 「生成分享链接」会把祝福和相册照片压缩为 WebP 上传到分享存储（Cloudflare KV 或 Netlify Blobs），返回形如 `?gift=xxxxxxxx` 的链接；链接 90 天内有效，朋友打开后看到的是你的树、相册和祝福，不会写入对方浏览器。
 - 如果在「圣诞布置」里上传过本地音乐，分享时会一并同步（文件需小于 5MB）；没有自定义音乐时，朋友会听到默认曲目。
 
 ## 素材与许可

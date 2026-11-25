@@ -1,0 +1,7 @@
+name = "aurora-noel"
+compatibility_date = "2026-11-01"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "GIFTS_KV"
+id = "e389a00e72454b1f9d40ae48b9769e32"
