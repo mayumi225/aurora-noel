@@ -2,7 +2,7 @@
 
 ![预览](docs/preview.png)
 
-在雪山与极光下实时渲染的交互式 3D 圣诞树。松针、灯串、彩球、礼盒、雪地、相册占位图全部由程序绘制，并支持摄像头手势控制。
+在雪山与极光下实时渲染的交互式 3D 圣诞树。松针、灯串、彩球、礼盒、雪地、相册占位图全部由程序绘制，并支持摄像头手势控制与祝福分享。
 
 ## 功能
 
@@ -12,11 +12,12 @@
 - 回忆相册：照片保存在浏览器 IndexedDB，以 3D 金属相框展示
 - 手势控制：MediaPipe Hands，食指移动光标、捏合抓取照片、张开手掌绽放星光
 - 音乐律动：音频频谱驱动灯光与粒子
-- 圣诞倒计时与名字定制
+- 圣诞倒计时、名字与祝福语定制
+- 祝福分享：把照片和祝福打包成链接，朋友点开即可看到你的圣诞树
 
 ## 技术栈
 
-React 19 · Three.js r181 · Vite 6 · @mediapipe/hands · lucide-react
+React 19 · Three.js r181 · Vite 6 · @mediapipe/hands · @netlify/blobs · lucide-react
 
 ## 本地运行
 
@@ -36,7 +37,16 @@ pnpm build
 pnpm preview
 ```
 
-产物位于 `dist/`，可直接部署到 Netlify、Vercel、GitHub Pages 等静态托管。
+分享链接依赖 Netlify Functions，`pnpm dev` / 静态预览中点击「生成分享链接」会提示服务未启用，这是正常现象。
+
+## 部署到 Netlify
+
+分享功能需要 Netlify Functions + Netlify Blobs，**必须通过 Git 集成或 Netlify CLI 构建部署**；直接拖拽纯静态压缩包不会启用 Function。
+
+1. Netlify → Add new site → Import an existing project，选择本仓库
+2. Build command 填 `npm run build`，Publish directory 填 `dist`
+3. 仓库内的 `netlify.toml` 已配置 Functions 目录与 Node 22
+4. 部署完成后打开站点 →「定制祝福」→「生成分享链接」
 
 ## 使用说明
 
@@ -44,7 +54,8 @@ pnpm preview
 - 「圣诞布置」可切换模式、调整粒子与装饰，或上传本地音乐。
 - 「回忆相册」支持 JPG / PNG / WEBP，照片保存在当前浏览器，不会上传。
 - 「手势控制」需要摄像头权限；视频帧只在浏览器本地处理。
-- 「定制名字」会更新开场与主场景的祝福，并在当前浏览器记住。
+- 「定制祝福」可修改名字与祝福语，并在当前浏览器记住。
+- 「生成分享链接」会把祝福和相册照片压缩为 WebP 上传到 Netlify Blobs，返回形如 `?gift=xxxxxxxx` 的链接；链接 90 天内有效，朋友打开后看到的是你的树、相册和祝福，不会写入对方浏览器。
 
 ## 素材与许可
 

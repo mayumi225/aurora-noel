@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowRight, ChevronRight, Snowflake, VolumeX } from 'lucide-react'
 import { random } from './random'
 
-export function Intro({ name, blocked, onUnlock, onReveal, onFinish }) {
+export function Intro({ name, message='愿今夜的星光，落在你身旁。', blocked, onUnlock, onReveal, onFinish }) {
   const canvasRef=useRef(null)
   const [ready,setReady]=useState(false)
   const [closing,setClosing]=useState(false)
@@ -87,7 +87,7 @@ export function Intro({ name, blocked, onUnlock, onReveal, onFinish }) {
     <div className="intro-copy">
       <Snowflake className="intro-flake" size={36} strokeWidth={.8} aria-hidden="true"/>
       <h1>Merry <em>Christmas</em></h1>
-      <p>{name?name+'，愿今夜的星光，落在你身旁。':'愿今夜的星光，落在你身旁。'}</p>
+      <p>{name?name+'，':''}{message}</p>
       <div className="intro-rule"><span>✦</span></div>
     </div>
     <div className="intro-enter">

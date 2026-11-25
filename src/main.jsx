@@ -1,13 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
-  Aperture, ArrowUpRight, ChevronRight, CircleHelp, Hand, ImagePlus, Images, Mouse,
-  Music2, Pause, PenLine, Play, Settings2, Snowflake, Sparkles, Trash2, TreePine, Upload, X,
+  Aperture, ArrowUpRight, Check, CircleHelp, Copy, Gift, Hand, ImagePlus, Images,
+  Loader2, Mouse, Music2, Pause, PenLine, Play, Settings2, Share2, Snowflake, Sparkles, Trash2,
+  TreePine, Upload, X,
 } from 'lucide-react'
 import { dateCountdown, defaultPhotos, localRead, localWrite, photoStorage } from './data'
 import { defaultTrack, useSound } from './sound'
 import { HandController } from './hand'
 import { Intro } from './intro'
+import { createShareLink, loadGift } from './share'
 import './styles.css'
 
 const lite=new URLSearchParams(location.search).has('lite')
@@ -16,7 +18,7 @@ const initialSettings={
   primary:'#ffd98a',accent:'#ff5964',box1:'#a02a41',box2:'#2d7561',bellColor:'#f2c14e',
 }
 const emptyHand={x:.5,y:.5,present:false,gesture:'idle'}
-const storageKeys={name:'aurora-noel:name',removed:'ct_removed_defaults'}
+const storageKeys={name:'aurora-noel:name',message:'aurora-noel:message',removed:'ct_removed_defaults'}
 let sceneModule
 const loadScene=()=>sceneModule??=import('./scene')
 
@@ -104,7 +106,7 @@ function Settings({settings,setSettings,mode,setMode,sound}) {
   </>
 }
 
-const titles={settings:'圣诞布置',gallery:'回忆相册',name:'定制名字',help:'操作指南'}
+const titles={settings:'圣诞布置',gallery:'回忆相册',name:'祝福与分享',help:'操作指南'}
 function Panel({kind,close,children}) {
   const ref=useRef(null)
   useEffect(()=>{
@@ -125,31 +127,96 @@ function Panel({kind,close,children}) {
   </dialog>
 }
 
-function NameForm({name,save}) {
-  const [draft,setDraft]=useState(name)
+function BlessingForm({name,message,photos,removed,onSave,onClose}) {
+  const [draftName,setDraftName]=useState(name)
+  const [draftMessage,setDraftMessage]=useState(message)
+  const [link,setLink]=useState('')
+  const [busy,setBusy]=useState(false)
+  const [progress,setProgress]=useState('')
+  const [notice,setNotice]=useState('')
+  const [copied,setCopied]=useState(false)
   const field=useRef(null)
   useEffect(()=>{field.current?.focus()},[])
-  return <form className="name-form" onSubmit={event=>{event.preventDefault();save(draft.trim().replace(/\s+/g,' '))}}>
-    <label htmlFor="greeting-name">想把祝福送给谁？</label>
-    <input ref={field} id="greeting-name" value={draft} onChange={event=>setDraft(event.target.value)}
-      maxLength={24} placeholder="输入名字" autoComplete="off"/>
-    <p className="name-preview">{draft.trim()||'你的名字'}，圣诞快乐！</p>
-    <div className="name-actions">
-      {name&&<button type="button" className="secondary" onClick={()=>save('')}>清除名字</button>}
-      <button type="submit" className="primary">保存祝福 <ChevronRight size={16}/></button>
-    </div>
-  </form>
+  const nextName=()=>draftName.trim().replace(/\s+/g,' ')
+  const nextMessage=()=>draftMessage.trim().replace(/\s+/g,' ')||'愿今夜的星光，落在你身旁。'
+  const preview=(nextName()?nextName()+'，':'')+nextMessage()
+  async function generate() {
+    setBusy(true); setNotice(''); setLink(''); setCopied(false)
+    const payload={name:nextName(),message:nextMessage()}
+    onSave(payload)
+    try {
+      const result=await createShareLink({
+        ...payload,removed,photos,
+        onProgress:(index,total)=>setProgress(`正在压缩照片 ${index}/${total}`),
+      })
+      setLink(result.url)
+      setProgress('')
+    } catch(error) {
+      const messages={
+        unavailable:'分享服务未启用：请通过 Netlify 部署（需 Functions）后再试。',
+        network:'网络连接失败，请稍后重试。',
+        'photo-too-large':'有照片体积过大，请换一张再试。',
+        'too-large':'照片总大小超出限制，请减少照片数量。',
+        failed:'生成失败，请稍后重试。',
+      }
+      setNotice(messages[error.message]||'生成失败，请稍后重试。')
+      setProgress('')
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function copyLink() {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1800) }
+    catch { setNotice('复制失败，请手动选中链接复制。') }
+  }
+  async function shareLink() {
+    if(!navigator.share)return copyLink()
+    try { await navigator.share({title:'我的圣诞树',text:preview,url:link}) } catch {}
+  }
+  return <div className="blessing-form">
+    <section className="panel-section">
+      <h3>祝福对象</h3>
+      <input ref={field} className="text-field" value={draftName} maxLength={24}
+        placeholder="输入名字（可留空）" autoComplete="off" onChange={event=>setDraftName(event.target.value)}/>
+      <h3 className="field-title">祝福语</h3>
+      <textarea className="text-field" value={draftMessage} maxLength={60} rows={3}
+        placeholder="写下想对朋友说的话" onChange={event=>setDraftMessage(event.target.value)}/>
+      <p className="name-preview">{preview}</p>
+      <div className="name-actions">
+        <button type="button" className="secondary" onClick={()=>{onSave({name:nextName(),message:nextMessage()});onClose()}}>
+          保存祝福
+        </button>
+      </div>
+    </section>
+    <section className="panel-section">
+      <h3>分享给朋友</h3>
+      <p className="share-hint">把祝福语和相册里的 {photos.length} 张照片打包成一个链接，朋友点开就能看到你的圣诞树。链接 90 天内有效。</p>
+      <button type="button" className="primary share-generate" onClick={generate} disabled={busy}>
+        {busy?<Loader2 className="share-spin" size={16}/>:<Share2 size={16}/>}{busy?'正在生成…':'生成分享链接'}
+      </button>
+      {progress&&<p className="notice">{progress}</p>}
+      {link&&<div className="share-result">
+        <input readOnly value={link} onFocus={event=>event.target.select()} aria-label="分享链接"/>
+        <button type="button" className="secondary" onClick={copyLink}>
+          {copied?<Check size={15}/>:<Copy size={15}/>}{copied?'已复制':'复制'}
+        </button>
+        {navigator.share&&<button type="button" className="secondary" onClick={shareLink}><Share2 size={15}/>分享</button>}
+      </div>}
+      {notice&&<p className="notice">{notice}</p>}
+      {!photos.length&&<p className="notice">相册里还没有照片，链接只会带上祝福语。</p>}
+    </section>
+  </div>
 }
 
-function Gallery({items,upload,remove,notice}) {
+function Gallery({items,upload,remove,notice,readOnly}) {
   return <div className="gallery-panel">
-    <p>添加照片后，相框会出现在树旁。照片仅保存在当前浏览器。</p>
-    <FileButton accept="image/jpeg,image/png,image/webp" multiple onFiles={upload}><ImagePlus size={16}/> 上传照片</FileButton>
+    <p>{readOnly?'这是好友分享的相册，照片不会保存到你的浏览器。':'添加照片后，相框会出现在树旁。照片仅保存在当前浏览器。'}</p>
+    {!readOnly&&<FileButton accept="image/jpeg,image/png,image/webp" multiple onFiles={upload}><ImagePlus size={16}/> 上传照片</FileButton>}
     {notice&&<p className="notice" role="status">{notice}</p>}
     <div className="gallery-grid">
       {items.map(item=><figure className="gallery-tile" key={item.id}>
         <img src={item.url} alt={item.name} loading="lazy"/>
-        <button type="button" className="remove-photo" aria-label={'删除 '+item.name} onClick={()=>remove(item)}><Trash2 size={15}/></button>
+        {!readOnly&&<button type="button" className="remove-photo" aria-label={'删除 '+item.name} onClick={()=>remove(item)}><Trash2 size={15}/></button>}
       </figure>)}
     </div>
     {!items.length&&<p className="gallery-empty">相册里还没有照片。</p>}
@@ -169,6 +236,7 @@ function App() {
   const [intro,setIntro]=useState(true)
   const [revealing,setRevealing]=useState(false)
   const [name,setName]=useState(()=>localRead(storageKeys.name,''))
+  const [message,setMessage]=useState(()=>localRead(storageKeys.message,'愿今夜的星光，落在你身旁。'))
   const [panel,setPanel]=useState(null)
   const [mode,setMode]=useState('tree')
   const [settings,setSettings]=useState(initialSettings)
@@ -180,9 +248,15 @@ function App() {
   const [removed,setRemoved]=useState(()=>localRead(storageKeys.removed,[]))
   const [uploads,setUploads]=useState([])
   const [notice,setNotice]=useState('')
+  const [gift,setGift]=useState(null)
+  const [giftState,setGiftState]=useState('idle')
   const view=useRef(null), world=useRef(null), hand=useRef(emptyHand), audio=useRef(0), photoUrls=useRef(new Set())
   const sound=useSound(audio)
-  const photos=[...defaults.filter(item=>!removed.includes(item.id)),...uploads]
+  const giftActive=Boolean(gift)
+  const displayName=giftActive?gift.name:name
+  const displayMessage=giftActive?gift.message:message
+  const activeRemoved=giftActive?gift.removed:removed
+  const photos=[...defaults.filter(item=>!activeRemoved.includes(item.id)),...(giftActive?gift.photos:uploads)]
   const sceneSettings=useRef(null)
   sceneSettings.current={settings,photos,mode}
 
@@ -221,9 +295,31 @@ function App() {
     })
     return ()=>{cancelled=true;world.current?.dispose();world.current=null}
   },[revealing])
+  useEffect(()=>{
+    const id=new URLSearchParams(location.search).get('gift')
+    if(!id)return
+    let cancelled=false
+    setGiftState('loading')
+    loadGift(id).then(data=>{
+      if(cancelled)return
+      setGift({
+        name:data.name||'',
+        message:data.message||'愿今夜的星光，落在你身旁。',
+        removed:Array.isArray(data.removed)?data.removed:[],
+        photos:(data.photos||[]).map((photo,index)=>({
+          id:'gift-'+index,name:photo.name||'照片',url:photo.data,gift:true,
+        })),
+      })
+      setGiftState('ready')
+    }).catch(error=>{
+      if(cancelled)return
+      setGiftState(error.message==='expired'?'expired':'error')
+    })
+    return ()=>{cancelled=true}
+  },[])
   useEffect(()=>{world.current?.config(settings)},[settings])
   useEffect(()=>{world.current?.setMode(mode)},[mode])
-  useEffect(()=>{world.current?.photos(photos)},[defaults,removed,uploads])
+  useEffect(()=>{world.current?.photos(photos)},[defaults,removed,uploads,gift])
 
   async function uploadPhotos(files) {
     const valid=files.filter(file=>['image/jpeg','image/png','image/webp'].includes(file.type)
@@ -266,10 +362,13 @@ function App() {
     photoUrls.current.delete(item.url)
     URL.revokeObjectURL(item.url)
   }
-  function saveName(value) {
+  function saveBlessing(next) {
+    const value=(next.name||'').trim().replace(/\s+/g,' ')
+    const wish=(next.message||'').trim().replace(/\s+/g,' ')||'愿今夜的星光，落在你身旁。'
     setName(value)
+    setMessage(wish)
     localWrite(storageKeys.name,value)
-    setPanel(null)
+    localWrite(storageKeys.message,wish)
   }
   function toggleHand() {
     setCameraStatus(tracking?'off':'loading')
@@ -297,15 +396,24 @@ function App() {
       </header>
       <main className="hero">
         <div className="hero-copy">
+          {giftState==='loading'&&<p className="gift-badge">正在加载好友的祝福…</p>}
+          {giftState==='error'&&<p className="gift-badge is-error">分享链接已失效或不存在</p>}
+          {giftState==='expired'&&<p className="gift-badge is-error">这份分享已过期</p>}
+          {giftActive&&<p className="gift-badge"><Gift size={13}/>来自 {gift.name||'朋友'} 的圣诞分享</p>}
           <h1 lang="en">Merry <em>Christmas</em></h1>
-          {!name&&<p className="hero-wish">愿今夜的星光，落在你身旁。</p>}
+          <p className={'hero-wish'+(displayName?' is-personal':'')}>
+            {displayName?<><strong>{displayName}</strong>，{displayMessage}</>:displayMessage}
+          </p>
           <div className="hero-actions">
             <Countdown/>
-            <button type="button" className="name-button" onClick={()=>setPanel('name')}>
-              <PenLine size={13}/>{name?'编辑名字':'定制名字'}<ArrowUpRight size={12} className="name-arrow"/>
-            </button>
+            {giftActive
+              ?<button type="button" className="name-button" onClick={()=>location.assign(location.pathname)}>
+                <Gift size={13}/>我也要做一棵<ArrowUpRight size={12} className="name-arrow"/>
+              </button>
+              :<button type="button" className="name-button" onClick={()=>setPanel('name')}>
+                <PenLine size={13}/>{name?'编辑祝福':'定制祝福'}<ArrowUpRight size={12} className="name-arrow"/>
+              </button>}
           </div>
-          {name&&<p className="hero-wish is-personal"><strong>{name}</strong>，圣诞快乐！</p>}
         </div>
       </main>
       <nav className="dock" aria-label="场景工具">
@@ -327,12 +435,12 @@ function App() {
       {error&&<div className="world-error" role="alert"><Aperture size={21}/> 当前设备无法打开 3D 场景。请检查浏览器的 WebGL 支持。<a href="?lite">试用轻量模式</a></div>}
       {panel&&<Panel key={panel} kind={panel} close={()=>setPanel(null)}>
         {panel==='settings'&&<Settings settings={settings} setSettings={setSettings} mode={mode} setMode={setMode} sound={sound}/>}
-        {panel==='gallery'&&<Gallery items={photos} upload={uploadPhotos} remove={deletePhoto} notice={notice}/>}
-        {panel==='name'&&<NameForm name={name} save={saveName}/>}
+        {panel==='gallery'&&<Gallery items={photos} upload={uploadPhotos} remove={deletePhoto} notice={notice} readOnly={giftActive}/>}
+        {panel==='name'&&<BlessingForm name={name} message={message} photos={uploads} removed={removed} onSave={saveBlessing} onClose={()=>setPanel(null)}/>}
         {panel==='help'&&<Help/>}
       </Panel>}
     </>}
-    {intro&&<Intro name={name} blocked={sound.blocked} onUnlock={sound.unlock} onReveal={()=>setRevealing(true)} onFinish={()=>setIntro(false)}/>} 
+    {intro&&<Intro name={displayName} message={displayMessage} blocked={sound.blocked} onUnlock={sound.unlock} onReveal={()=>setRevealing(true)} onFinish={()=>setIntro(false)}/>} 
   </div>
 }
 createRoot(document.getElementById('root')).render(<App/>)

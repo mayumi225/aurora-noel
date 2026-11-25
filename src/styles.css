@@ -107,6 +107,23 @@ button svg{flex:none}
 .name-form input::placeholder{color:#a0afb1}
 .name-preview{margin:3px 0 0;padding:14px 11px;border:1px dashed #f0c99560;border-radius:7px;color:#f6d5a2;font:600 18px/1.5 var(--serif);overflow-wrap:anywhere}
 .name-actions{justify-content:flex-end;display:flex;gap:8px}
+.blessing-form{display:grid;gap:0;padding-top:6px}
+.blessing-form h3{margin:0 0 8px;font-size:14px;color:#f4d9aa;font-weight:600}
+.blessing-form .field-title{margin-top:18px}
+.text-field{width:100%;padding:11px 12px;border:1px solid #a4c6ce70;border-radius:7px;background:#071723;color:#fff1d7;font:inherit;font-size:13px;line-height:1.5;resize:vertical}
+.text-field::placeholder{color:#8fa3a5}
+.text-field:focus{outline:none;border-color:#f0c995a8;box-shadow:0 0 0 2px #f0c9951f}
+.blessing-form .name-preview{margin-top:12px}
+.blessing-form .name-actions{margin-top:8px}
+.share-hint{margin:0 0 10px;font-size:12.5px;line-height:1.65;color:#b7c9c8}
+.share-generate{width:100%}
+.share-result{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.share-result input{flex:1 1 100%;min-width:0;padding:10px 11px;border:1px solid #a4c6ce55;border-radius:7px;background:#061420;color:#ffe9c4;font-size:11.5px}
+.share-result .secondary{flex:1 1 0}
+.gift-badge{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;padding:5px 10px;border:1px solid #f0c99555;border-radius:100px;background:#0c1f2acc;color:#f6d5a2;font-size:11px;letter-spacing:.04em}
+.gift-badge.is-error{border-color:#ff9a8a66;color:#ffb9ae}
+.share-spin{animation:share-spin .9s linear infinite}
+@keyframes share-spin{to{transform:rotate(360deg)}}
 .gallery-panel p,.notice,.help-list p{font-size:13px;line-height:1.6;color:#c1d3d2}
 .notice{color:#f5cb94!important;margin:8px 0 0}
 .gallery-grid{margin-top:15px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
