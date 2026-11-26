@@ -414,7 +414,7 @@ function App() {
           {giftState==='error'&&<p className="gift-badge is-error">分享链接已失效或不存在</p>}
           {giftState==='expired'&&<p className="gift-badge is-error">这份分享已过期</p>}
           {giftActive&&<p className="gift-badge"><Gift size={13}/>来自 {gift.name||'朋友'} 的圣诞分享</p>}
-          <h1 lang="en">Merry <em>Christmas</em></h1>
+          <h1 lang="zh-CN">天天开心<em>GMT</em></h1>
           <p className={'hero-wish'+(displayName?' is-personal':'')}>
             {displayName?<><strong>{displayName}</strong>，{displayMessage}</>:displayMessage}
           </p>
