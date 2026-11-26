@@ -86,7 +86,7 @@ export function Intro({ name, message='愿今夜的星光，落在你身旁。',
     <button className="intro-skip" onClick={event=>{event.stopPropagation();finish(true)}}>跳过 <ChevronRight size={15}/></button>
     <div className="intro-copy">
       <Snowflake className="intro-flake" size={36} strokeWidth={.8} aria-hidden="true"/>
-      <h1>Merry <em>Christmas</em></h1>
+      <h1>天天开心<em>GMT</em></h1>
       <p>{name?name+'，':''}{message}</p>
       <div className="intro-rule"><span>✦</span></div>
     </div>
